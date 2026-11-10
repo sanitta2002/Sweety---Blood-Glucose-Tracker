@@ -1,3 +1,5 @@
+import type { CreateUserDTO } from "../../dto/auth.dto.js";
+
 export interface User {
   id: string;
   name: string;
@@ -12,9 +14,5 @@ export interface UserWithPassword extends User {
 export interface IUserRepository {
   findByEmail(email: string): Promise<UserWithPassword | null>;
   findById(id: string): Promise<User | null>;
-  create(user: {
-    name: string;
-    email: string;
-    passwordHash: string;
-  }): Promise<User>;
+  create(user: CreateUserDTO): Promise<User>;
 }

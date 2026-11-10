@@ -7,7 +7,7 @@ import {
   validateUpdateReadingInput,
 } from "../validators/reading.validator.js";
 import { READING_MESSAGES, AUTH_MESSAGES } from "../constants/messages.js";
-import { ReadingSlot } from "../repositories/interfaces/IReadingRepository.js";
+import type { ReadingSlot } from "../types/reading.types.js";
 
 export class ReadingController {
   private readonly readingService: ReadingService;

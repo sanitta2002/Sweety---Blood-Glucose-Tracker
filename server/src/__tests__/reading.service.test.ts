@@ -1,14 +1,16 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { ReadingService } from "../services/reading.service.js";
-import {
-  IReadingRepository,
+import type { IReadingRepository } from "../repositories/interfaces/IReadingRepository.js";
+import type {
   Reading,
-  CreateReadingDTO,
-  UpdateReadingDTO,
   ReadingSlot,
   ReadingStats,
-} from "../repositories/interfaces/IReadingRepository.js";
+} from "../types/reading.types.js";
+import type {
+  CreateReadingDTO,
+  UpdateReadingDTO,
+} from "../dto/reading.dto.js";
 import { AppError } from "../errors/AppError.js";
 import { READING_MESSAGES } from "../constants/messages.js";
 
@@ -209,25 +211,21 @@ describe("ReadingService Unit Tests", () => {
     const repo = new MockReadingRepository();
     const service = new ReadingService(repo);
 
-    // Add readings on 2026-10-15: values 95, 142, 131 (average = 368 / 3 = 122.666... -> 122.7)
     await service.addReading({ userId, readingDate: "2026-10-15", slot: "MORNING", value: 95 });
     await service.addReading({ userId, readingDate: "2026-10-15", slot: "AFTER_BREAKFAST", value: 142 });
     await service.addReading({ userId, readingDate: "2026-10-15", slot: "AFTER_LUNCH", value: 131 });
 
     const reports = await service.getReports(userId, "2026-10-15");
 
-    // Daily
     assert.equal(reports.daily.count, 3);
     assert.equal(reports.daily.highest, 142);
     assert.equal(reports.daily.lowest, 95);
     assert.equal(reports.daily.average, 122.7);
     assert.equal(reports.daily.readings.length, 3);
 
-    // Month to date
     assert.equal(reports.monthToDate.count, 3);
     assert.equal(reports.monthToDate.average, 122.7);
 
-    // Monthly (previous month - September 2026) empty state
     assert.equal(reports.monthly.count, 0);
     assert.equal(reports.monthly.highest, null);
     assert.equal(reports.monthly.lowest, null);

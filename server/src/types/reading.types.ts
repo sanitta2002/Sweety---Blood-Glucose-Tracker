@@ -1,4 +1,25 @@
-import { Reading, ReadingSlot } from "../repositories/interfaces/IReadingRepository.js";
+export type ReadingSlot =
+  | "MORNING"
+  | "AFTER_BREAKFAST"
+  | "AFTER_LUNCH"
+  | "AFTER_DINNER";
+
+export interface Reading {
+  id: string;
+  user_id: string;
+  reading_date: string;
+  slot: ReadingSlot;
+  value: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface ReadingStats {
+  count: number;
+  highest: number | null;
+  lowest: number | null;
+  average: number | null;
+}
 
 export interface CreateReadingParams {
   userId: string;

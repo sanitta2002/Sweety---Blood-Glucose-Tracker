@@ -1,8 +1,9 @@
-import { IReadingRepository, Reading } from "../repositories/interfaces/IReadingRepository.js";
+import type { IReadingRepository } from "../repositories/interfaces/IReadingRepository.js";
 import { AppError } from "../errors/AppError.js";
 import { READING_MESSAGES } from "../constants/messages.js";
 import { getSlotLabel } from "../validators/reading.validator.js";
 import type {
+  Reading,
   CreateReadingParams,
   UpdateReadingParams,
   ReportSummary,

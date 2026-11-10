@@ -1,38 +1,12 @@
-export type ReadingSlot =
-  | "MORNING"
-  | "AFTER_BREAKFAST"
-  | "AFTER_LUNCH"
-  | "AFTER_DINNER";
-
-export interface Reading {
-  id: string;
-  user_id: string;
-  reading_date: string;
-  slot: ReadingSlot;
-  value: number;
-  created_at: Date;
-  updated_at: Date;
-}
-
-export interface CreateReadingDTO {
-  userId: string;
-  readingDate: string;
-  slot: ReadingSlot;
-  value: number;
-}
-
-export interface UpdateReadingDTO {
-  readingDate?: string;
-  slot?: ReadingSlot;
-  value?: number;
-}
-
-export interface ReadingStats {
-  count: number;
-  highest: number | null;
-  lowest: number | null;
-  average: number | null;
-}
+import type {
+  Reading,
+  ReadingSlot,
+  ReadingStats,
+} from "../../types/reading.types.js";
+import type {
+  CreateReadingDTO,
+  UpdateReadingDTO,
+} from "../../dto/reading.dto.js";
 
 export interface IReadingRepository {
   create(data: CreateReadingDTO): Promise<Reading>;

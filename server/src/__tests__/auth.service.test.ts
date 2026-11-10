@@ -5,7 +5,6 @@ import { IUserRepository, User, UserWithPassword } from "../repositories/interfa
 import { AppError } from "../errors/AppError.js";
 import { AUTH_MESSAGES } from "../constants/messages.js";
 
-// In-memory mock repository for unit testing AuthService
 class MockUserRepository implements IUserRepository {
   private users: UserWithPassword[] = [];
 

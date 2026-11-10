@@ -6,9 +6,11 @@ import { AUTH_MESSAGES } from "../constants/messages.js";
 import type {
   AuthResponse,
   AuthUserResponse,
+} from "../types/auth.types.js";
+import type {
   RegisterDTO,
   LoginDTO,
-} from "../types/auth.types.js";
+} from "../dto/auth.dto.js";
 
 export type { AuthResponse, AuthUserResponse, RegisterDTO, LoginDTO };
 

@@ -1,12 +1,14 @@
 import pool from "../../config/database.js";
-import {
-  IReadingRepository,
+import type { IReadingRepository } from "../interfaces/IReadingRepository.js";
+import type {
   Reading,
-  CreateReadingDTO,
-  UpdateReadingDTO,
   ReadingSlot,
   ReadingStats,
-} from "../interfaces/IReadingRepository.js";
+} from "../../types/reading.types.js";
+import type {
+  CreateReadingDTO,
+  UpdateReadingDTO,
+} from "../../dto/reading.dto.js";
 
 export class ReadingRepository implements IReadingRepository {
   async create(data: CreateReadingDTO): Promise<Reading> {

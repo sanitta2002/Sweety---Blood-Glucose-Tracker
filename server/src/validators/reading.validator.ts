@@ -1,5 +1,5 @@
 import { READING_MESSAGES, READING_SLOT_LABELS } from "../constants/messages.js";
-import { ReadingSlot } from "../repositories/interfaces/IReadingRepository.js";
+import type { ReadingSlot } from "../types/reading.types.js";
 
 export interface ReadingValidationResult {
   isValid: boolean;
