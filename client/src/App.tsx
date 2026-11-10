@@ -3,9 +3,11 @@ import { useAuth } from "./context/AuthContext.js";
 import { Navbar } from "./components/Navbar.js";
 import { AuthView } from "./components/AuthView.js";
 import { ReportsView } from "./components/ReportsView.js";
+import { MonthlyTrendChart } from "./components/MonthlyTrendChart.js";
 import { ReadingHistoryTable } from "./components/ReadingHistoryTable.js";
 import { ReadingFormModal } from "./components/ReadingFormModal.js";
-import { api } from "./services/api.js";
+import { Spinner } from "./components/common/index.js";
+import { readingService } from "./services/reading.service.js";
 import type { Reading, ComprehensiveReport } from "./types/index.js";
 
 export const App: React.FC = () => {
@@ -31,8 +33,8 @@ export const App: React.FC = () => {
 
     try {
       const [reportsRes, readingsRes] = await Promise.all([
-        api.readings.getReports(selectedDate),
-        api.readings.getAll(),
+        readingService.getReports(selectedDate),
+        readingService.getAll(),
       ]);
 
       if (reportsRes.data) {
@@ -69,7 +71,7 @@ export const App: React.FC = () => {
     if (!confirm) return;
 
     try {
-      await api.readings.delete(id);
+      await readingService.delete(id);
       showNotification("success", "Reading deleted successfully.");
       loadData();
     } catch (err: unknown) {
@@ -85,12 +87,7 @@ export const App: React.FC = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="loading-screen">
-        <div className="spinner"></div>
-        <p>Loading Sweety...</p>
-      </div>
-    );
+    return <Spinner label="Loading Sweety..." />;
   }
 
   if (!user) {
@@ -115,6 +112,11 @@ export const App: React.FC = () => {
           onDateChange={setSelectedDate}
           onEditReading={handleEdit}
           onDeleteReading={handleDelete}
+        />
+
+        <MonthlyTrendChart
+          readings={allReadings}
+          selectedDate={selectedDate}
         />
 
         <ReadingHistoryTable

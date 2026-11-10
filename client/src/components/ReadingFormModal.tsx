@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import type { Reading, ReadingSlot } from "../types/index.js";
 import { READING_SLOT_LABELS, VALIDATION_MESSAGES } from "../constants/messages.js";
 import { readingZodSchema } from "../validators/index.js";
-import { api } from "../services/api.js";
+import { readingService } from "../services/reading.service.js";
+import { Modal, Input, Button, Alert } from "./common/index.js";
 
 interface ReadingFormModalProps {
   isOpen: boolean;
@@ -48,8 +49,6 @@ export const ReadingFormModal: React.FC<ReadingFormModalProps> = ({
     setError(null);
   }, [initialReading, defaultDate, isOpen, todayStr]);
 
-  if (!isOpen) return null;
-
   const validate = (): boolean => {
     const zodResult = readingZodSchema.safeParse({ readingDate, slot, value });
     if (!zodResult.success) {
@@ -85,13 +84,17 @@ export const ReadingFormModal: React.FC<ReadingFormModalProps> = ({
     setLoading(true);
     try {
       if (initialReading) {
-        await api.readings.update(initialReading.id, {
+        await readingService.update(initialReading.id, {
           readingDate,
           slot,
           value: Number(value),
         });
       } else {
-        await api.readings.create(readingDate, slot, Number(value));
+        await readingService.create({
+          readingDate,
+          slot,
+          value: Number(value),
+        });
       }
       onSaved();
       onClose();
@@ -107,100 +110,78 @@ export const ReadingFormModal: React.FC<ReadingFormModalProps> = ({
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>{initialReading ? "Edit Reading" : "Record Blood Glucose"}</h3>
-          <button type="button" className="btn-close" onClick={onClose} aria-label="Close">
-            &times;
-          </button>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={initialReading ? "Edit Reading" : "Record Blood Glucose"}
+    >
+      {error && <Alert type="error">{error}</Alert>}
+
+      <form onSubmit={handleSubmit} className="reading-form">
+        <Input
+          label="Date"
+          type="date"
+          max={todayStr}
+          value={readingDate}
+          onChange={(e) => {
+            setReadingDate(e.target.value);
+            setError(null);
+          }}
+          required
+        />
+
+        <div className="form-group">
+          <label htmlFor="reading-slot" className="form-label">
+            Time Slot
+          </label>
+          <select
+            id="reading-slot"
+            className="input"
+            value={slot}
+            onChange={(e) => {
+              setSlot(e.target.value as ReadingSlot);
+              setError(null);
+            }}
+            required
+          >
+            {SLOTS.map((s) => (
+              <option key={s} value={s}>
+                {READING_SLOT_LABELS[s]}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {error && (
-          <div className="alert alert-error" role="alert">
-            <span className="alert-icon">⚠️</span>
-            <span>{error}</span>
-          </div>
-        )}
+        <Input
+          label="Glucose Level (mg/dl)"
+          type="number"
+          placeholder="e.g. 110"
+          min={40}
+          max={600}
+          step={1}
+          value={value}
+          helpText="Whole number between 40 and 600 mg/dl"
+          onChange={(e) => {
+            setValue(e.target.value);
+            setError(null);
+          }}
+          required
+        />
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="reading-date">Date</label>
-            <input
-              id="reading-date"
-              type="date"
-              className="input"
-              max={todayStr}
-              value={readingDate}
-              onChange={(e) => {
-                setReadingDate(e.target.value);
-                setError(null);
-              }}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="reading-slot">Time Slot</label>
-            <select
-              id="reading-slot"
-              className="input"
-              value={slot}
-              onChange={(e) => {
-                setSlot(e.target.value as ReadingSlot);
-                setError(null);
-              }}
-              required
-            >
-              {SLOTS.map((s) => (
-                <option key={s} value={s}>
-                  {READING_SLOT_LABELS[s]}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="reading-value">
-              Glucose Level <span className="text-muted">(mg/dl)</span>
-            </label>
-            <input
-              id="reading-value"
-              type="number"
-              className="input"
-              placeholder="e.g. 110"
-              min={40}
-              max={600}
-              step={1}
-              value={value}
-              onChange={(e) => {
-                setValue(e.target.value);
-                setError(null);
-              }}
-              required
-            />
-            <small className="help-text">Whole number between 40 and 600 mg/dl</small>
-          </div>
-
-          <div className="modal-actions">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onClose}
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={loading}
-            >
-              {loading ? "Saving..." : initialReading ? "Save Changes" : "Add Reading"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="modal-actions">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" isLoading={loading}>
+            {initialReading ? "Save Changes" : "Add Reading"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 };

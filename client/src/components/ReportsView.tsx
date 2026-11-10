@@ -1,6 +1,7 @@
 import React from "react";
 import type { ComprehensiveReport, Reading, ReadingSlot } from "../types/index.js";
 import { READING_SLOT_LABELS } from "../constants/messages.js";
+import { Badge, type BadgeVariant } from "./common/index.js";
 
 interface ReportsViewProps {
   reports: ComprehensiveReport | null;
@@ -41,11 +42,11 @@ function formatRange(startDateStr: string, endDateStr: string): string {
   return `${startFormatted} – ${endFormatted}`;
 }
 
-function getGlucoseBadgeClass(val: number): string {
-  if (val < 70) return "badge-hypo";
-  if (val <= 130) return "badge-normal";
-  if (val <= 180) return "badge-elevated";
-  return "badge-high";
+function getGlucoseBadgeVariant(val: number): BadgeVariant {
+  if (val < 70) return "hypo";
+  if (val <= 130) return "normal";
+  if (val <= 180) return "elevated";
+  return "high";
 }
 
 export const ReportsView: React.FC<ReportsViewProps> = ({
@@ -121,9 +122,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                         <span className="slot-name">
                           {READING_SLOT_LABELS[reading.slot as ReadingSlot]}
                         </span>
-                        <span className={`glucose-tag ${getGlucoseBadgeClass(reading.value)}`}>
+                        <Badge variant={getGlucoseBadgeVariant(reading.value)}>
                           {reading.value} mg/dl
-                        </span>
+                        </Badge>
                       </div>
                       <div className="slot-actions">
                         {onEditReading && (
@@ -157,7 +158,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               <span className="empty-icon">📊</span>
               <p className="empty-title">No readings for this date</p>
               <p className="empty-description">
-                Use the "Record Reading" button above to log your blood glucose for this day.
+                Use the "Record Reading" button to log your blood glucose for this day.
               </p>
             </div>
           )}

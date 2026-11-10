@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext.js";
 import { loginZodSchema, registerZodSchema } from "../validators/index.js";
+import { Button, Input, Alert } from "./common/index.js";
 
 export const AuthView: React.FC = () => {
   const { login, register } = useAuth();
@@ -90,73 +91,48 @@ export const AuthView: React.FC = () => {
           </button>
         </div>
 
-        {error && (
-          <div className="alert alert-error" role="alert">
-            <span className="alert-icon">⚠️</span>
-            <span>{error}</span>
-          </div>
-        )}
+        {error && <Alert type="error">{error}</Alert>}
 
         <form onSubmit={handleSubmit} className="auth-form">
           {isRegister && (
-            <div className="form-group">
-              <label htmlFor="auth-name">Full Name</label>
-              <input
-                id="auth-name"
-                type="text"
-                className="input"
-                placeholder="Jane Doe"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={loading}
-              />
-            </div>
+            <Input
+              label="Full Name"
+              type="text"
+              placeholder="Jane Doe"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={loading}
+            />
           )}
 
-          <div className="form-group">
-            <label htmlFor="auth-email">Email Address</label>
-            <input
-              id="auth-email"
-              type="email"
-              className="input"
-              placeholder="patient@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="auth-password">Password</label>
-            <input
-              id="auth-password"
-              type="password"
-              className="input"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="btn btn-primary btn-block"
+          <Input
+            label="Email Address"
+            type="email"
+            placeholder="patient@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             disabled={loading}
-          >
-            {loading ? "Processing..." : isRegister ? "Sign Up" : "Sign In"}
-          </button>
+          />
+
+          <Input
+            label="Password"
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={loading}
+          />
+
+          <Button type="submit" variant="primary" block isLoading={loading}>
+            {isRegister ? "Sign Up" : "Sign In"}
+          </Button>
         </form>
 
         <div className="demo-box">
           <p className="demo-hint">Testing the application?</p>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={handleDemoFill}
-          >
+          <Button type="button" variant="ghost" size="sm" onClick={handleDemoFill}>
             Fill Demo Account (demo@sweety.com)
-          </button>
+          </Button>
         </div>
       </div>
     </div>

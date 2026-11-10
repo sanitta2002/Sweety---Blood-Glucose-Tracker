@@ -1,6 +1,7 @@
 import React from "react";
 import type { Reading, ReadingSlot } from "../types/index.js";
 import { READING_SLOT_LABELS } from "../constants/messages.js";
+import { Button, Badge, type BadgeVariant } from "./common/index.js";
 
 interface ReadingHistoryTableProps {
   readings: Reading[];
@@ -9,11 +10,11 @@ interface ReadingHistoryTableProps {
   onAddNew: () => void;
 }
 
-function getGlucoseTagClass(val: number): string {
-  if (val < 70) return "badge-hypo";
-  if (val <= 130) return "badge-normal";
-  if (val <= 180) return "badge-elevated";
-  return "badge-high";
+function getGlucoseBadgeVariant(val: number): BadgeVariant {
+  if (val < 70) return "hypo";
+  if (val <= 130) return "normal";
+  if (val <= 180) return "elevated";
+  return "high";
 }
 
 function formatTableDate(dateStr: string): string {
@@ -43,9 +44,9 @@ export const ReadingHistoryTable: React.FC<ReadingHistoryTableProps> = ({
             Complete chronological record of your blood glucose measurements
           </p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={onAddNew}>
+        <Button variant="primary" onClick={onAddNew}>
           + Record Reading
-        </button>
+        </Button>
       </div>
 
       {readings.length === 0 ? (
@@ -55,9 +56,9 @@ export const ReadingHistoryTable: React.FC<ReadingHistoryTableProps> = ({
           <p className="empty-description">
             Start tracking your diabetes readings by clicking "+ Record Reading".
           </p>
-          <button type="button" className="btn btn-primary" onClick={onAddNew}>
+          <Button variant="primary" onClick={onAddNew}>
             Record First Reading
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="table-responsive">
@@ -73,7 +74,7 @@ export const ReadingHistoryTable: React.FC<ReadingHistoryTableProps> = ({
             </thead>
             <tbody>
               {readings.map((reading) => {
-                const tagClass = getGlucoseTagClass(reading.value);
+                const badgeVariant = getGlucoseBadgeVariant(reading.value);
                 const category =
                   reading.value < 70
                     ? "Low (Hypo)"
@@ -92,23 +93,26 @@ export const ReadingHistoryTable: React.FC<ReadingHistoryTableProps> = ({
                       <span className="text-muted text-sm">mg/dl</span>
                     </td>
                     <td>
-                      <span className={`glucose-tag ${tagClass}`}>{category}</span>
+                      <Badge variant={badgeVariant}>{category}</Badge>
                     </td>
                     <td className="text-right">
-                      <button
+                      <Button
                         type="button"
-                        className="btn btn-ghost btn-sm"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => onEdit(reading)}
                       >
                         Edit
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
-                        className="btn btn-ghost btn-danger btn-sm"
+                        variant="ghost"
+                        size="sm"
+                        className="btn-danger"
                         onClick={() => onDelete(reading.id)}
                       >
                         Delete
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 );

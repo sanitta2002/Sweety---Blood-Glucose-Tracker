@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import type { User } from "../types/index.js";
-import { api, getStoredToken, setStoredToken, clearStoredToken } from "../services/api.js";
+import { authService } from "../services/auth.service.js";
+import { tokenService } from "../services/token.service.js";
 
 interface AuthContextType {
   user: User | null;
@@ -15,29 +16,29 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(getStoredToken());
+  const [token, setToken] = useState<string | null>(tokenService.getToken());
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     async function loadUser(): Promise<void> {
-      const storedToken = getStoredToken();
+      const storedToken = tokenService.getToken();
       if (!storedToken) {
         setIsLoading(false);
         return;
       }
 
       try {
-        const response = await api.auth.getMe();
+        const response = await authService.getMe();
         if (response.data?.user) {
           setUser(response.data.user);
           setToken(storedToken);
         } else {
-          clearStoredToken();
+          tokenService.removeToken();
           setToken(null);
           setUser(null);
         }
       } catch {
-        clearStoredToken();
+        tokenService.removeToken();
         setToken(null);
         setUser(null);
       } finally {
@@ -49,25 +50,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string): Promise<void> => {
-    const response = await api.auth.login(email, password);
+    const response = await authService.login(email, password);
     if (response.data) {
-      setStoredToken(response.data.token);
+      tokenService.setToken(response.data.token);
       setToken(response.data.token);
       setUser(response.data.user);
     }
   };
 
   const register = async (name: string, email: string, password: string): Promise<void> => {
-    const response = await api.auth.register(name, email, password);
+    const response = await authService.register(name, email, password);
     if (response.data) {
-      setStoredToken(response.data.token);
+      tokenService.setToken(response.data.token);
       setToken(response.data.token);
       setUser(response.data.user);
     }
   };
 
   const logout = (): void => {
-    clearStoredToken();
+    tokenService.removeToken();
     setToken(null);
     setUser(null);
   };
