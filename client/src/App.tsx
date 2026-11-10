@@ -6,6 +6,7 @@ import { ReportsView } from "./components/ReportsView.js";
 import { MonthlyTrendChart } from "./components/MonthlyTrendChart.js";
 import { ReadingHistoryTable } from "./components/ReadingHistoryTable.js";
 import { ReadingFormModal } from "./components/ReadingFormModal.js";
+import { ConfirmDeleteModal } from "./components/ConfirmDeleteModal.js";
 import { Spinner } from "./components/common/index.js";
 import { readingService } from "./services/reading.service.js";
 import type { Reading, ComprehensiveReport } from "./types/index.js";
@@ -19,6 +20,8 @@ export const App: React.FC = () => {
   const [allReadings, setAllReadings] = useState<Reading[]>([]);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingReading, setEditingReading] = useState<Reading | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [notification, setNotification] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const showNotification = (type: "success" | "error", text: string): void => {
@@ -66,18 +69,25 @@ export const App: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: string): Promise<void> => {
-    const confirm = window.confirm("Are you sure you want to delete this reading?");
-    if (!confirm) return;
+  const handleDeleteRequest = (id: string): void => {
+    setDeletingId(id);
+  };
 
+  const handleConfirmDelete = async (): Promise<void> => {
+    if (!deletingId) return;
+
+    setIsDeleting(true);
     try {
-      await readingService.delete(id);
+      await readingService.delete(deletingId);
       showNotification("success", "Reading deleted successfully.");
+      setDeletingId(null);
       loadData();
     } catch (err: unknown) {
       if (err instanceof Error) {
         showNotification("error", err.message);
       }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -111,7 +121,7 @@ export const App: React.FC = () => {
           selectedDate={selectedDate}
           onDateChange={setSelectedDate}
           onEditReading={handleEdit}
-          onDeleteReading={handleDelete}
+          onDeleteReading={handleDeleteRequest}
         />
 
         <MonthlyTrendChart
@@ -122,7 +132,7 @@ export const App: React.FC = () => {
         <ReadingHistoryTable
           readings={allReadings}
           onEdit={handleEdit}
-          onDelete={handleDelete}
+          onDelete={handleDeleteRequest}
           onAddNew={handleAddNew}
         />
       </main>
@@ -134,6 +144,13 @@ export const App: React.FC = () => {
         initialReading={editingReading}
         defaultDate={selectedDate}
         existingReadings={allReadings}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={deletingId !== null}
+        onClose={() => setDeletingId(null)}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
       />
     </div>
   );

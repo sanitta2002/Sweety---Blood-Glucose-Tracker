@@ -865,3 +865,21 @@ body {
 .tooltip-value {
   font-size: 0.85rem;
 }
+
+.confirm-modal-body {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.confirm-icon {
+  font-size: 2.25rem;
+  line-height: 1;
+}
+
+.confirm-message {
+  font-size: 0.95rem;
+  color: var(--text-main);
+  line-height: 1.4;
+}
