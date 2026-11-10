@@ -1,0 +1,236 @@
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { ReadingService } from "../services/reading.service.js";
+import {
+  IReadingRepository,
+  Reading,
+  CreateReadingDTO,
+  UpdateReadingDTO,
+  ReadingSlot,
+  ReadingStats,
+} from "../repositories/interfaces/IReadingRepository.js";
+import { AppError } from "../errors/AppError.js";
+import { READING_MESSAGES } from "../constants/messages.js";
+
+class MockReadingRepository implements IReadingRepository {
+  private readings: Reading[] = [];
+
+  async create(data: CreateReadingDTO): Promise<Reading> {
+    const newReading: Reading = {
+      id: "reading-uuid-" + (this.readings.length + 1),
+      user_id: data.userId,
+      reading_date: data.readingDate,
+      slot: data.slot,
+      value: data.value,
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
+    this.readings.push(newReading);
+    return newReading;
+  }
+
+  async findById(id: string, userId: string): Promise<Reading | null> {
+    const reading = this.readings.find((r) => r.id === id && r.user_id === userId);
+    return reading ? { ...reading } : null;
+  }
+
+  async findByUserAndDateAndSlot(
+    userId: string,
+    readingDate: string,
+    slot: ReadingSlot
+  ): Promise<Reading | null> {
+    const reading = this.readings.find(
+      (r) => r.user_id === userId && r.reading_date === readingDate && r.slot === slot
+    );
+    return reading ? { ...reading } : null;
+  }
+
+  async countByDate(userId: string, readingDate: string): Promise<number> {
+    return this.readings.filter(
+      (r) => r.user_id === userId && r.reading_date === readingDate
+    ).length;
+  }
+
+  async findByUser(
+    userId: string,
+    filters?: {
+      date?: string;
+      startDate?: string;
+      endDate?: string;
+      page?: number;
+      limit?: number;
+    }
+  ): Promise<{ readings: Reading[]; total: number }> {
+    let list = this.readings.filter((r) => r.user_id === userId);
+
+    if (filters?.date) {
+      list = list.filter((r) => r.reading_date === filters.date);
+    }
+    if (filters?.startDate) {
+      list = list.filter((r) => r.reading_date >= filters.startDate!);
+    }
+    if (filters?.endDate) {
+      list = list.filter((r) => r.reading_date <= filters.endDate!);
+    }
+
+    return { readings: list, total: list.length };
+  }
+
+  async update(
+    id: string,
+    userId: string,
+    data: UpdateReadingDTO
+  ): Promise<Reading | null> {
+    const index = this.readings.findIndex((r) => r.id === id && r.user_id === userId);
+    if (index === -1) return null;
+
+    const existing = this.readings[index];
+    const updated: Reading = {
+      ...existing,
+      reading_date: data.readingDate ?? existing.reading_date,
+      slot: data.slot ?? existing.slot,
+      value: data.value ?? existing.value,
+      updated_at: new Date(),
+    };
+    this.readings[index] = updated;
+    return updated;
+  }
+
+  async delete(id: string, userId: string): Promise<boolean> {
+    const initialLen = this.readings.length;
+    this.readings = this.readings.filter((r) => !(r.id === id && r.user_id === userId));
+    return this.readings.length < initialLen;
+  }
+
+  async getStats(
+    userId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<ReadingStats> {
+    const filtered = this.readings.filter(
+      (r) => r.user_id === userId && r.reading_date >= startDate && r.reading_date <= endDate
+    );
+
+    if (filtered.length === 0) {
+      return { count: 0, highest: null, lowest: null, average: null };
+    }
+
+    const values = filtered.map((r) => r.value);
+    const count = values.length;
+    const highest = Math.max(...values);
+    const lowest = Math.min(...values);
+    const sum = values.reduce((acc, curr) => acc + curr, 0);
+    const average = Math.round((sum / count) * 10) / 10;
+
+    return { count, highest, lowest, average };
+  }
+}
+
+describe("ReadingService Unit Tests", () => {
+  const userId = "test-user-123";
+
+  it("should successfully record a reading", async () => {
+    const repo = new MockReadingRepository();
+    const service = new ReadingService(repo);
+
+    const reading = await service.addReading({
+      userId,
+      readingDate: "2026-10-15",
+      slot: "MORNING",
+      value: 105,
+    });
+
+    assert.equal(reading.value, 105);
+    assert.equal(reading.slot, "MORNING");
+    assert.equal(reading.reading_date, "2026-10-15");
+  });
+
+  it("should enforce 'Only one reading per slot per day'", async () => {
+    const repo = new MockReadingRepository();
+    const service = new ReadingService(repo);
+
+    await service.addReading({
+      userId,
+      readingDate: "2026-10-15",
+      slot: "AFTER_LUNCH",
+      value: 140,
+    });
+
+    await assert.rejects(
+      async () => {
+        await service.addReading({
+          userId,
+          readingDate: "2026-10-15",
+          slot: "AFTER_LUNCH",
+          value: 155,
+        });
+      },
+      (err: unknown) => {
+        assert.ok(err instanceof AppError);
+        assert.equal(err.statusCode, 409);
+        assert.equal(
+          err.message,
+          READING_MESSAGES.SLOT_ALREADY_EXISTS("After lunch")
+        );
+        return true;
+      }
+    );
+  });
+
+  it("should enforce 'Maximum 4 readings per day'", async () => {
+    const repo = new MockReadingRepository();
+    const service = new ReadingService(repo);
+    const date = "2026-10-15";
+
+    await service.addReading({ userId, readingDate: date, slot: "MORNING", value: 100 });
+    await service.addReading({ userId, readingDate: date, slot: "AFTER_BREAKFAST", value: 140 });
+    await service.addReading({ userId, readingDate: date, slot: "AFTER_LUNCH", value: 130 });
+    await service.addReading({ userId, readingDate: date, slot: "AFTER_DINNER", value: 125 });
+
+    await assert.rejects(
+      async () => {
+        await service.addReading({
+          userId,
+          readingDate: date,
+          slot: "MORNING",
+          value: 110,
+        });
+      },
+      (err: unknown) => {
+        assert.ok(err instanceof AppError);
+        assert.equal(err.statusCode, 400);
+        assert.equal(err.message, READING_MESSAGES.MAX_READINGS_PER_DAY);
+        return true;
+      }
+    );
+  });
+
+  it("should generate reports with highest, lowest and average rounded to 1 decimal", async () => {
+    const repo = new MockReadingRepository();
+    const service = new ReadingService(repo);
+
+    // Add readings on 2026-10-15: values 95, 142, 131 (average = 368 / 3 = 122.666... -> 122.7)
+    await service.addReading({ userId, readingDate: "2026-10-15", slot: "MORNING", value: 95 });
+    await service.addReading({ userId, readingDate: "2026-10-15", slot: "AFTER_BREAKFAST", value: 142 });
+    await service.addReading({ userId, readingDate: "2026-10-15", slot: "AFTER_LUNCH", value: 131 });
+
+    const reports = await service.getReports(userId, "2026-10-15");
+
+    // Daily
+    assert.equal(reports.daily.count, 3);
+    assert.equal(reports.daily.highest, 142);
+    assert.equal(reports.daily.lowest, 95);
+    assert.equal(reports.daily.average, 122.7);
+    assert.equal(reports.daily.readings.length, 3);
+
+    // Month to date
+    assert.equal(reports.monthToDate.count, 3);
+    assert.equal(reports.monthToDate.average, 122.7);
+
+    // Monthly (previous month - September 2026) empty state
+    assert.equal(reports.monthly.count, 0);
+    assert.equal(reports.monthly.highest, null);
+    assert.equal(reports.monthly.lowest, null);
+    assert.equal(reports.monthly.average, null);
+  });
+});

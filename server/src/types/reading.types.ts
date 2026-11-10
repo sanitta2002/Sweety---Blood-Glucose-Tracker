@@ -1,0 +1,36 @@
+import { Reading, ReadingSlot } from "../repositories/interfaces/IReadingRepository.js";
+
+export interface CreateReadingParams {
+  userId: string;
+  readingDate: string;
+  slot: ReadingSlot;
+  value: number;
+}
+
+export interface UpdateReadingParams {
+  userId: string;
+  id: string;
+  readingDate?: string;
+  slot?: ReadingSlot;
+  value?: number;
+}
+
+export interface ReportSummary {
+  highest: number | null;
+  lowest: number | null;
+  average: number | null;
+  count: number;
+  startDate: string;
+  endDate: string;
+}
+
+export interface DailyReport extends ReportSummary {
+  date: string;
+  readings: Reading[];
+}
+
+export interface ComprehensiveReport {
+  daily: DailyReport;
+  monthToDate: ReportSummary;
+  monthly: ReportSummary;
+}
