@@ -6,7 +6,8 @@ import {
   validateCreateReadingInput,
   validateUpdateReadingInput,
 } from "../validators/reading.validator.js";
-import { READING_MESSAGES, AUTH_MESSAGES } from "../constants/messages.js";
+import { AUTH_MESSAGES } from "../constants/messages.js";
+import { HTTP_STATUS } from "../constants/statusCodes.js";
 import type { ReadingSlot } from "../types/reading.types.js";
 
 export class ReadingController {
@@ -24,30 +25,30 @@ export class ReadingController {
     try {
       const userId = req.user?.userId;
       if (!userId) {
-        res.status(401).json({ success: false, message: AUTH_MESSAGES.UNAUTHORIZED });
+        res.status(HTTP_STATUS.UNAUTHORIZED).json({ success: false, message: AUTH_MESSAGES.UNAUTHORIZED });
         return;
       }
 
       const validation = validateCreateReadingInput(req.body);
       if (!validation.isValid) {
-        res.status(400).json({
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
           success: false,
           message: validation.message,
         });
         return;
       }
 
-      const reading = await this.readingService.addReading({
+      const response = await this.readingService.addReading({
         userId,
         readingDate: req.body.readingDate,
         slot: req.body.slot as ReadingSlot,
         value: Number(req.body.value),
       });
 
-      res.status(201).json({
+      res.status(response.statusCode).json({
         success: true,
-        message: READING_MESSAGES.CREATED_SUCCESS,
-        data: reading,
+        message: response.message,
+        data: response.data,
       });
     } catch (error: unknown) {
       next(error);
@@ -62,7 +63,7 @@ export class ReadingController {
     try {
       const userId = req.user?.userId;
       if (!userId) {
-        res.status(401).json({ success: false, message: AUTH_MESSAGES.UNAUTHORIZED });
+        res.status(HTTP_STATUS.UNAUTHORIZED).json({ success: false, message: AUTH_MESSAGES.UNAUTHORIZED });
         return;
       }
 
@@ -72,7 +73,7 @@ export class ReadingController {
       const page = req.query.page ? Number(req.query.page) : undefined;
       const limit = req.query.limit ? Number(req.query.limit) : undefined;
 
-      const result = await this.readingService.getReadings(userId, {
+      const response = await this.readingService.getReadings(userId, {
         date,
         startDate,
         endDate,
@@ -80,13 +81,14 @@ export class ReadingController {
         limit,
       });
 
-      res.status(200).json({
+      res.status(response.statusCode).json({
         success: true,
-        data: result.readings,
+        message: response.message,
+        data: response.data?.readings ?? [],
         meta: {
-          total: result.total,
-          page: page || 1,
-          limit: limit || result.total,
+          total: response.data?.total ?? 0,
+          page: response.data?.page ?? 1,
+          limit: response.data?.limit ?? 0,
         },
       });
     } catch (error: unknown) {
@@ -102,16 +104,17 @@ export class ReadingController {
     try {
       const userId = req.user?.userId;
       if (!userId) {
-        res.status(401).json({ success: false, message: AUTH_MESSAGES.UNAUTHORIZED });
+        res.status(HTTP_STATUS.UNAUTHORIZED).json({ success: false, message: AUTH_MESSAGES.UNAUTHORIZED });
         return;
       }
 
       const id = typeof req.params.id === "string" ? req.params.id : req.params.id[0];
-      const reading = await this.readingService.getReadingById(id, userId);
+      const response = await this.readingService.getReadingById(id, userId);
 
-      res.status(200).json({
+      res.status(response.statusCode).json({
         success: true,
-        data: reading,
+        message: response.message,
+        data: response.data,
       });
     } catch (error: unknown) {
       next(error);
@@ -126,13 +129,13 @@ export class ReadingController {
     try {
       const userId = req.user?.userId;
       if (!userId) {
-        res.status(401).json({ success: false, message: AUTH_MESSAGES.UNAUTHORIZED });
+        res.status(HTTP_STATUS.UNAUTHORIZED).json({ success: false, message: AUTH_MESSAGES.UNAUTHORIZED });
         return;
       }
 
       const validation = validateUpdateReadingInput(req.body);
       if (!validation.isValid) {
-        res.status(400).json({
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
           success: false,
           message: validation.message,
         });
@@ -140,7 +143,7 @@ export class ReadingController {
       }
 
       const id = typeof req.params.id === "string" ? req.params.id : req.params.id[0];
-      const updated = await this.readingService.updateReading({
+      const response = await this.readingService.updateReading({
         userId,
         id,
         readingDate: req.body.readingDate,
@@ -148,10 +151,10 @@ export class ReadingController {
         value: req.body.value !== undefined ? Number(req.body.value) : undefined,
       });
 
-      res.status(200).json({
+      res.status(response.statusCode).json({
         success: true,
-        message: READING_MESSAGES.UPDATED_SUCCESS,
-        data: updated,
+        message: response.message,
+        data: response.data,
       });
     } catch (error: unknown) {
       next(error);
@@ -166,16 +169,16 @@ export class ReadingController {
     try {
       const userId = req.user?.userId;
       if (!userId) {
-        res.status(401).json({ success: false, message: AUTH_MESSAGES.UNAUTHORIZED });
+        res.status(HTTP_STATUS.UNAUTHORIZED).json({ success: false, message: AUTH_MESSAGES.UNAUTHORIZED });
         return;
       }
 
       const id = typeof req.params.id === "string" ? req.params.id : req.params.id[0];
-      await this.readingService.deleteReading(id, userId);
+      const response = await this.readingService.deleteReading(id, userId);
 
-      res.status(200).json({
+      res.status(response.statusCode).json({
         success: true,
-        message: READING_MESSAGES.DELETED_SUCCESS,
+        message: response.message,
       });
     } catch (error: unknown) {
       next(error);
@@ -190,7 +193,7 @@ export class ReadingController {
     try {
       const userId = req.user?.userId;
       if (!userId) {
-        res.status(401).json({ success: false, message: AUTH_MESSAGES.UNAUTHORIZED });
+        res.status(HTTP_STATUS.UNAUTHORIZED).json({ success: false, message: AUTH_MESSAGES.UNAUTHORIZED });
         return;
       }
 
@@ -199,11 +202,12 @@ export class ReadingController {
           ? req.query.date.trim()
           : new Date().toISOString().split("T")[0];
 
-      const report = await this.readingService.getReports(userId, selectedDate);
+      const response = await this.readingService.getReports(userId, selectedDate);
 
-      res.status(200).json({
+      res.status(response.statusCode).json({
         success: true,
-        data: report,
+        message: response.message,
+        data: response.data,
       });
     } catch (error: unknown) {
       next(error);

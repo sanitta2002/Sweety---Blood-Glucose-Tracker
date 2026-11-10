@@ -1,8 +1,10 @@
 import bcrypt from "bcrypt";
 import jwt, { SignOptions } from "jsonwebtoken";
-import { IUserRepository, User } from "../repositories/interfaces/IUserRepository.js";
+import type { IUserRepository, User } from "../repositories/interfaces/IUserRepository.js";
 import { AppError } from "../errors/AppError.js";
 import { AUTH_MESSAGES } from "../constants/messages.js";
+import { HTTP_STATUS } from "../constants/statusCodes.js";
+import type { ServiceResponse } from "../types/response.types.js";
 import type {
   AuthResponse,
   AuthUserResponse,
@@ -21,12 +23,12 @@ const SALT_ROUNDS: number = Number(process.env.SALT_ROUNDS) || 10;
 export class AuthService {
   constructor(private readonly userRepository: IUserRepository) {}
 
-  async register(data: RegisterDTO): Promise<AuthResponse> {
+  async register(data: RegisterDTO): Promise<ServiceResponse<AuthResponse>> {
     const normalizedEmail = data.email.trim().toLowerCase();
 
     const existingUser = await this.userRepository.findByEmail(normalizedEmail);
     if (existingUser) {
-      throw new AppError(AUTH_MESSAGES.EMAIL_ALREADY_EXISTS, 409);
+      throw new AppError(AUTH_MESSAGES.EMAIL_ALREADY_EXISTS, HTTP_STATUS.CONFLICT);
     }
 
     const passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS);
@@ -40,42 +42,59 @@ export class AuthService {
     const token = this.generateToken(user.id, user.email);
 
     return {
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
+      statusCode: HTTP_STATUS.CREATED,
+      message: AUTH_MESSAGES.REGISTER_SUCCESS,
+      data: {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        },
+        token,
       },
-      token,
     };
   }
 
-  async login(data: LoginDTO): Promise<AuthResponse> {
+  async login(data: LoginDTO): Promise<ServiceResponse<AuthResponse>> {
     const normalizedEmail = data.email.trim().toLowerCase();
 
     const user = await this.userRepository.findByEmail(normalizedEmail);
     if (!user) {
-      throw new AppError(AUTH_MESSAGES.INVALID_CREDENTIALS, 401);
+      throw new AppError(AUTH_MESSAGES.INVALID_CREDENTIALS, HTTP_STATUS.UNAUTHORIZED);
     }
 
     const isPasswordValid = await bcrypt.compare(data.password, user.password_hash);
     if (!isPasswordValid) {
-      throw new AppError(AUTH_MESSAGES.INVALID_CREDENTIALS, 401);
+      throw new AppError(AUTH_MESSAGES.INVALID_CREDENTIALS, HTTP_STATUS.UNAUTHORIZED);
     }
 
     const token = this.generateToken(user.id, user.email);
 
     return {
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
+      statusCode: HTTP_STATUS.OK,
+      message: AUTH_MESSAGES.LOGIN_SUCCESS,
+      data: {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        },
+        token,
       },
-      token,
     };
   }
 
-  async getUserById(userId: string): Promise<User | null> {
-    return this.userRepository.findById(userId);
+  async getUserById(userId: string): Promise<ServiceResponse<User>> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new AppError(AUTH_MESSAGES.USER_NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+    }
+
+    return {
+      statusCode: HTTP_STATUS.OK,
+      message: AUTH_MESSAGES.USER_FETCHED_SUCCESS,
+      data: user,
+    };
   }
 
   private generateToken(userId: string, email: string): string {

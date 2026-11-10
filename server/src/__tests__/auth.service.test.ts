@@ -1,9 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { AuthService } from "../services/auth.service.js";
-import { IUserRepository, User, UserWithPassword } from "../repositories/interfaces/IUserRepository.js";
+import type { IUserRepository, User, UserWithPassword } from "../repositories/interfaces/IUserRepository.js";
+import type { CreateUserDTO } from "../dto/auth.dto.js";
 import { AppError } from "../errors/AppError.js";
 import { AUTH_MESSAGES } from "../constants/messages.js";
+import { HTTP_STATUS } from "../constants/statusCodes.js";
 
 class MockUserRepository implements IUserRepository {
   private users: UserWithPassword[] = [];
@@ -20,7 +22,7 @@ class MockUserRepository implements IUserRepository {
     return user;
   }
 
-  async create(user: { name: string; email: string; passwordHash: string }): Promise<User> {
+  async create(user: CreateUserDTO): Promise<User> {
     const newUser: UserWithPassword = {
       id: "mock-uuid-" + (this.users.length + 1),
       name: user.name,
@@ -35,7 +37,7 @@ class MockUserRepository implements IUserRepository {
 }
 
 describe("AuthService Unit Tests", () => {
-  it("should successfully register a user and return token and user data without password", async () => {
+  it("should successfully register a user and return status code, message and user data without password", async () => {
     const mockRepo = new MockUserRepository();
     const service = new AuthService(mockRepo);
 
@@ -45,10 +47,12 @@ describe("AuthService Unit Tests", () => {
       password: "password123",
     });
 
-    assert.ok(result.token);
-    assert.equal(result.user.name, "Jane Doe");
-    assert.equal(result.user.email, "jane@example.com");
-    assert.ok(result.user.id);
+    assert.equal(result.statusCode, HTTP_STATUS.CREATED);
+    assert.equal(result.message, AUTH_MESSAGES.REGISTER_SUCCESS);
+    assert.ok(result.data?.token);
+    assert.equal(result.data?.user.name, "Jane Doe");
+    assert.equal(result.data?.user.email, "jane@example.com");
+    assert.ok(result.data?.user.id);
   });
 
   it("should reject registration if email is already registered", async () => {
@@ -71,14 +75,14 @@ describe("AuthService Unit Tests", () => {
       },
       (err: unknown) => {
         assert.ok(err instanceof AppError);
-        assert.equal(err.statusCode, 409);
+        assert.equal(err.statusCode, HTTP_STATUS.CONFLICT);
         assert.equal(err.message, AUTH_MESSAGES.EMAIL_ALREADY_EXISTS);
         return true;
       }
     );
   });
 
-  it("should successfully log in with valid credentials", async () => {
+  it("should successfully log in with valid credentials and return status code, message, and token", async () => {
     const mockRepo = new MockUserRepository();
     const service = new AuthService(mockRepo);
 
@@ -93,8 +97,10 @@ describe("AuthService Unit Tests", () => {
       password: "password123",
     });
 
-    assert.ok(loginResult.token);
-    assert.equal(loginResult.user.email, "jane@example.com");
+    assert.equal(loginResult.statusCode, HTTP_STATUS.OK);
+    assert.equal(loginResult.message, AUTH_MESSAGES.LOGIN_SUCCESS);
+    assert.ok(loginResult.data?.token);
+    assert.equal(loginResult.data?.user.email, "jane@example.com");
   });
 
   it("should reject login with wrong password", async () => {
@@ -116,7 +122,7 @@ describe("AuthService Unit Tests", () => {
       },
       (err: unknown) => {
         assert.ok(err instanceof AppError);
-        assert.equal(err.statusCode, 401);
+        assert.equal(err.statusCode, HTTP_STATUS.UNAUTHORIZED);
         assert.equal(err.message, AUTH_MESSAGES.INVALID_CREDENTIALS);
         return true;
       }

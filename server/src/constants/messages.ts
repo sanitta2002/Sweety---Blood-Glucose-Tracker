@@ -10,6 +10,7 @@ export const AUTH_MESSAGES = {
   REGISTER_SUCCESS: "User registered successfully.",
   LOGIN_SUCCESS: "Logged in successfully.",
   USER_NOT_FOUND: "User not found.",
+  USER_FETCHED_SUCCESS: "User profile fetched successfully.",
   UNAUTHORIZED: "Unauthorized.",
   NO_TOKEN_PROVIDED: "Access denied. No token provided.",
   INVALID_OR_EXPIRED_TOKEN: "Invalid or expired token. Please log in again.",
@@ -35,8 +36,11 @@ export const READING_MESSAGES = {
     return `You already have an ${slotLabel} reading for this date.`;
   },
   CREATED_SUCCESS: "Reading recorded successfully.",
+  FETCHED_SUCCESS: "Reading fetched successfully.",
+  LIST_FETCHED_SUCCESS: "Readings fetched successfully.",
   UPDATED_SUCCESS: "Reading updated successfully.",
   DELETED_SUCCESS: "Reading deleted successfully.",
+  REPORTS_SUCCESS: "Reports generated successfully.",
   NOT_FOUND: "Reading not found.",
 } as const;
 

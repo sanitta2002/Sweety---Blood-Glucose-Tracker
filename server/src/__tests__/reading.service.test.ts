@@ -13,6 +13,7 @@ import type {
 } from "../dto/reading.dto.js";
 import { AppError } from "../errors/AppError.js";
 import { READING_MESSAGES } from "../constants/messages.js";
+import { HTTP_STATUS } from "../constants/statusCodes.js";
 
 class MockReadingRepository implements IReadingRepository {
   private readings: Reading[] = [];
@@ -131,23 +132,25 @@ class MockReadingRepository implements IReadingRepository {
 describe("ReadingService Unit Tests", () => {
   const userId = "test-user-123";
 
-  it("should successfully record a reading", async () => {
+  it("should successfully record a reading and return status code, message and data", async () => {
     const repo = new MockReadingRepository();
     const service = new ReadingService(repo);
 
-    const reading = await service.addReading({
+    const res = await service.addReading({
       userId,
       readingDate: "2026-10-15",
       slot: "MORNING",
       value: 105,
     });
 
-    assert.equal(reading.value, 105);
-    assert.equal(reading.slot, "MORNING");
-    assert.equal(reading.reading_date, "2026-10-15");
+    assert.equal(res.statusCode, HTTP_STATUS.CREATED);
+    assert.equal(res.message, READING_MESSAGES.CREATED_SUCCESS);
+    assert.equal(res.data?.value, 105);
+    assert.equal(res.data?.slot, "MORNING");
+    assert.equal(res.data?.reading_date, "2026-10-15");
   });
 
-  it("should enforce 'Only one reading per slot per day'", async () => {
+  it("should enforce 'Only one reading per slot per day' with CONFLICT status", async () => {
     const repo = new MockReadingRepository();
     const service = new ReadingService(repo);
 
@@ -169,7 +172,7 @@ describe("ReadingService Unit Tests", () => {
       },
       (err: unknown) => {
         assert.ok(err instanceof AppError);
-        assert.equal(err.statusCode, 409);
+        assert.equal(err.statusCode, HTTP_STATUS.CONFLICT);
         assert.equal(
           err.message,
           READING_MESSAGES.SLOT_ALREADY_EXISTS("After lunch")
@@ -179,7 +182,7 @@ describe("ReadingService Unit Tests", () => {
     );
   });
 
-  it("should enforce 'Maximum 4 readings per day'", async () => {
+  it("should enforce 'Maximum 4 readings per day' with BAD_REQUEST status", async () => {
     const repo = new MockReadingRepository();
     const service = new ReadingService(repo);
     const date = "2026-10-15";
@@ -200,7 +203,7 @@ describe("ReadingService Unit Tests", () => {
       },
       (err: unknown) => {
         assert.ok(err instanceof AppError);
-        assert.equal(err.statusCode, 400);
+        assert.equal(err.statusCode, HTTP_STATUS.BAD_REQUEST);
         assert.equal(err.message, READING_MESSAGES.MAX_READINGS_PER_DAY);
         return true;
       }
@@ -215,20 +218,22 @@ describe("ReadingService Unit Tests", () => {
     await service.addReading({ userId, readingDate: "2026-10-15", slot: "AFTER_BREAKFAST", value: 142 });
     await service.addReading({ userId, readingDate: "2026-10-15", slot: "AFTER_LUNCH", value: 131 });
 
-    const reports = await service.getReports(userId, "2026-10-15");
+    const res = await service.getReports(userId, "2026-10-15");
 
-    assert.equal(reports.daily.count, 3);
-    assert.equal(reports.daily.highest, 142);
-    assert.equal(reports.daily.lowest, 95);
-    assert.equal(reports.daily.average, 122.7);
-    assert.equal(reports.daily.readings.length, 3);
+    assert.equal(res.statusCode, HTTP_STATUS.OK);
+    assert.equal(res.message, READING_MESSAGES.REPORTS_SUCCESS);
+    assert.equal(res.data?.daily.count, 3);
+    assert.equal(res.data?.daily.highest, 142);
+    assert.equal(res.data?.daily.lowest, 95);
+    assert.equal(res.data?.daily.average, 122.7);
+    assert.equal(res.data?.daily.readings.length, 3);
 
-    assert.equal(reports.monthToDate.count, 3);
-    assert.equal(reports.monthToDate.average, 122.7);
+    assert.equal(res.data?.monthToDate.count, 3);
+    assert.equal(res.data?.monthToDate.average, 122.7);
 
-    assert.equal(reports.monthly.count, 0);
-    assert.equal(reports.monthly.highest, null);
-    assert.equal(reports.monthly.lowest, null);
-    assert.equal(reports.monthly.average, null);
+    assert.equal(res.data?.monthly.count, 0);
+    assert.equal(res.data?.monthly.highest, null);
+    assert.equal(res.data?.monthly.lowest, null);
+    assert.equal(res.data?.monthly.average, null);
   });
 });

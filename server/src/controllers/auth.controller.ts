@@ -4,6 +4,7 @@ import { UserRepository } from "../repositories/implementations/UserRepository.j
 import { validateRegisterInput, validateLoginInput } from "../validators/auth.validator.js";
 import { AuthenticatedRequest } from "../middleware/auth.middleware.js";
 import { AUTH_MESSAGES } from "../constants/messages.js";
+import { HTTP_STATUS } from "../constants/statusCodes.js";
 
 export class AuthController {
   private readonly authService: AuthService;
@@ -16,23 +17,23 @@ export class AuthController {
     try {
       const validation = validateRegisterInput(req.body);
       if (!validation.isValid) {
-        res.status(400).json({
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
           success: false,
           message: validation.message,
         });
         return;
       }
 
-      const result = await this.authService.register({
+      const response = await this.authService.register({
         name: req.body.name,
         email: req.body.email,
         password: req.body.password,
       });
 
-      res.status(201).json({
+      res.status(response.statusCode).json({
         success: true,
-        message: AUTH_MESSAGES.REGISTER_SUCCESS,
-        data: result,
+        message: response.message,
+        data: response.data,
       });
     } catch (error: unknown) {
       next(error);
@@ -43,22 +44,22 @@ export class AuthController {
     try {
       const validation = validateLoginInput(req.body);
       if (!validation.isValid) {
-        res.status(400).json({
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
           success: false,
           message: validation.message,
         });
         return;
       }
 
-      const result = await this.authService.login({
+      const response = await this.authService.login({
         email: req.body.email,
         password: req.body.password,
       });
 
-      res.status(200).json({
+      res.status(response.statusCode).json({
         success: true,
-        message: AUTH_MESSAGES.LOGIN_SUCCESS,
-        data: result,
+        message: response.message,
+        data: response.data,
       });
     } catch (error: unknown) {
       next(error);
@@ -68,30 +69,24 @@ export class AuthController {
   getMe = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!req.user?.userId) {
-        res.status(401).json({
+        res.status(HTTP_STATUS.UNAUTHORIZED).json({
           success: false,
           message: AUTH_MESSAGES.UNAUTHORIZED,
         });
         return;
       }
 
-      const user = await this.authService.getUserById(req.user.userId);
-      if (!user) {
-        res.status(404).json({
-          success: false,
-          message: AUTH_MESSAGES.USER_NOT_FOUND,
-        });
-        return;
-      }
+      const response = await this.authService.getUserById(req.user.userId);
 
-      res.status(200).json({
+      res.status(response.statusCode).json({
         success: true,
+        message: response.message,
         data: {
           user: {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            created_at: user.created_at,
+            id: response.data?.id,
+            name: response.data?.name,
+            email: response.data?.email,
+            created_at: response.data?.created_at,
           },
         },
       });
