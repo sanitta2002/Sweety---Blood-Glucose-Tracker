@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext.js";
-import { VALIDATION_MESSAGES } from "../constants/messages.js";
+import { loginZodSchema, registerZodSchema } from "../validators/index.js";
 
 export const AuthView: React.FC = () => {
   const { login, register } = useAuth();
@@ -16,25 +16,17 @@ export const AuthView: React.FC = () => {
     setError(null);
 
     if (isRegister) {
-      if (!name.trim()) {
-        setError(VALIDATION_MESSAGES.NAME_REQUIRED);
+      const result = registerZodSchema.safeParse({ name, email, password });
+      if (!result.success) {
+        setError(result.error.issues[0]?.message || "Invalid input.");
         return;
       }
-    }
-
-    if (!email.trim()) {
-      setError(VALIDATION_MESSAGES.EMAIL_REQUIRED);
-      return;
-    }
-
-    if (!password) {
-      setError(VALIDATION_MESSAGES.PASSWORD_REQUIRED);
-      return;
-    }
-
-    if (password.length < 6) {
-      setError(VALIDATION_MESSAGES.PASSWORD_MIN_LENGTH);
-      return;
+    } else {
+      const result = loginZodSchema.safeParse({ email, password });
+      if (!result.success) {
+        setError(result.error.issues[0]?.message || "Invalid input.");
+        return;
+      }
     }
 
     setLoading(true);

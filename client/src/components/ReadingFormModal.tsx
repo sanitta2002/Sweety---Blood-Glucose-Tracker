@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import type { Reading, ReadingSlot } from "../types/index.js";
 import { READING_SLOT_LABELS, VALIDATION_MESSAGES } from "../constants/messages.js";
+import { readingZodSchema } from "../validators/index.js";
 import { api } from "../services/api.js";
 
 interface ReadingFormModalProps {
@@ -50,29 +51,9 @@ export const ReadingFormModal: React.FC<ReadingFormModalProps> = ({
   if (!isOpen) return null;
 
   const validate = (): boolean => {
-    if (!readingDate) {
-      setError(VALIDATION_MESSAGES.DATE_REQUIRED);
-      return false;
-    }
-
-    if (readingDate > todayStr) {
-      setError(VALIDATION_MESSAGES.DATE_FUTURE);
-      return false;
-    }
-
-    if (!slot) {
-      setError(VALIDATION_MESSAGES.SLOT_REQUIRED);
-      return false;
-    }
-
-    if (!value || value.trim() === "") {
-      setError(VALIDATION_MESSAGES.VALUE_REQUIRED);
-      return false;
-    }
-
-    const numValue = Number(value);
-    if (!Number.isInteger(numValue) || numValue < 40 || numValue > 600) {
-      setError(VALIDATION_MESSAGES.VALUE_OUT_OF_RANGE);
+    const zodResult = readingZodSchema.safeParse({ readingDate, slot, value });
+    if (!zodResult.success) {
+      setError(zodResult.error.issues[0]?.message || VALIDATION_MESSAGES.VALUE_REQUIRED);
       return false;
     }
 

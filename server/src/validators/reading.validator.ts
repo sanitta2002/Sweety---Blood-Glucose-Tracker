@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { READING_MESSAGES, READING_SLOT_LABELS } from "../constants/messages.js";
 import type { ReadingSlot } from "../types/reading.types.js";
 
@@ -22,92 +23,142 @@ export function isDateInFuture(dateString: string): boolean {
   return inputDate.getTime() > today.getTime();
 }
 
-export function validateCreateReadingInput(data: {
-  readingDate?: unknown;
-  slot?: unknown;
-  value?: unknown;
-}): ReadingValidationResult {
-  const { readingDate, slot, value } = data;
+export const createReadingZodSchema = z.object({
+  value: z
+    .unknown()
+    .superRefine((val, ctx) => {
+      if (val === undefined || val === null || val === "") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: READING_MESSAGES.VALUE_REQUIRED,
+        });
+        return;
+      }
+      const num = Number(val);
+      if (isNaN(num) || !Number.isInteger(num) || num < 40 || num > 600) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: READING_MESSAGES.VALUE_OUT_OF_RANGE,
+        });
+      }
+    }),
+  readingDate: z
+    .unknown()
+    .superRefine((val, ctx) => {
+      if (typeof val !== "string" || val.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: READING_MESSAGES.DATE_REQUIRED,
+        });
+        return;
+      }
+      const trimmed = val.trim();
+      if (!DATE_REGEX.test(trimmed) || isNaN(Date.parse(trimmed))) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: READING_MESSAGES.DATE_INVALID,
+        });
+        return;
+      }
+      if (isDateInFuture(trimmed)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: READING_MESSAGES.DATE_FUTURE,
+        });
+      }
+    }),
+  slot: z
+    .unknown()
+    .superRefine((val, ctx) => {
+      if (typeof val !== "string" || val.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: READING_MESSAGES.SLOT_REQUIRED,
+        });
+        return;
+      }
+      if (!ALLOWED_SLOTS.includes(val.trim() as ReadingSlot)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: READING_MESSAGES.SLOT_INVALID,
+        });
+      }
+    }),
+});
 
-  if (value === undefined || value === null || value === "") {
-    return { isValid: false, message: READING_MESSAGES.VALUE_REQUIRED };
+export const updateReadingZodSchema = z.object({
+  value: z
+    .unknown()
+    .optional()
+    .superRefine((val, ctx) => {
+      if (val === undefined) return;
+      if (val === null || val === "") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: READING_MESSAGES.VALUE_REQUIRED,
+        });
+        return;
+      }
+      const num = Number(val);
+      if (isNaN(num) || !Number.isInteger(num) || num < 40 || num > 600) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: READING_MESSAGES.VALUE_OUT_OF_RANGE,
+        });
+      }
+    }),
+  readingDate: z
+    .unknown()
+    .optional()
+    .superRefine((val, ctx) => {
+      if (val === undefined) return;
+      if (typeof val !== "string" || !DATE_REGEX.test(val.trim()) || isNaN(Date.parse(val.trim()))) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: READING_MESSAGES.DATE_INVALID,
+        });
+        return;
+      }
+      if (isDateInFuture(val.trim())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: READING_MESSAGES.DATE_FUTURE,
+        });
+      }
+    }),
+  slot: z
+    .unknown()
+    .optional()
+    .superRefine((val, ctx) => {
+      if (val === undefined) return;
+      if (typeof val !== "string" || !ALLOWED_SLOTS.includes(val.trim() as ReadingSlot)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: READING_MESSAGES.SLOT_INVALID,
+        });
+      }
+    }),
+});
+
+export function validateCreateReadingInput(data: unknown): ReadingValidationResult {
+  const result = createReadingZodSchema.safeParse(data);
+  if (!result.success) {
+    return {
+      isValid: false,
+      message: result.error.issues[0]?.message || READING_MESSAGES.VALUE_REQUIRED,
+    };
   }
-
-  const numericValue = Number(value);
-  if (
-    !Number.isInteger(numericValue) ||
-    numericValue < 40 ||
-    numericValue > 600
-  ) {
-    return { isValid: false, message: READING_MESSAGES.VALUE_OUT_OF_RANGE };
-  }
-
-  if (
-    typeof readingDate !== "string" ||
-    readingDate.trim().length === 0
-  ) {
-    return { isValid: false, message: READING_MESSAGES.DATE_REQUIRED };
-  }
-
-  if (!DATE_REGEX.test(readingDate.trim()) || isNaN(Date.parse(readingDate.trim()))) {
-    return { isValid: false, message: READING_MESSAGES.DATE_INVALID };
-  }
-
-  if (isDateInFuture(readingDate.trim())) {
-    return { isValid: false, message: READING_MESSAGES.DATE_FUTURE };
-  }
-
-  if (typeof slot !== "string" || slot.trim().length === 0) {
-    return { isValid: false, message: READING_MESSAGES.SLOT_REQUIRED };
-  }
-
-  if (!ALLOWED_SLOTS.includes(slot as ReadingSlot)) {
-    return { isValid: false, message: READING_MESSAGES.SLOT_INVALID };
-  }
-
   return { isValid: true };
 }
 
-export function validateUpdateReadingInput(data: {
-  readingDate?: unknown;
-  slot?: unknown;
-  value?: unknown;
-}): ReadingValidationResult {
-  const { readingDate, slot, value } = data;
-
-  if (value !== undefined) {
-    if (value === null || value === "") {
-      return { isValid: false, message: READING_MESSAGES.VALUE_REQUIRED };
-    }
-    const numericValue = Number(value);
-    if (
-      !Number.isInteger(numericValue) ||
-      numericValue < 40 ||
-      numericValue > 600
-    ) {
-      return { isValid: false, message: READING_MESSAGES.VALUE_OUT_OF_RANGE };
-    }
+export function validateUpdateReadingInput(data: unknown): ReadingValidationResult {
+  const result = updateReadingZodSchema.safeParse(data);
+  if (!result.success) {
+    return {
+      isValid: false,
+      message: result.error.issues[0]?.message || READING_MESSAGES.VALUE_REQUIRED,
+    };
   }
-
-  if (readingDate !== undefined) {
-    if (
-      typeof readingDate !== "string" ||
-      !DATE_REGEX.test(readingDate.trim()) ||
-      isNaN(Date.parse(readingDate.trim()))
-    ) {
-      return { isValid: false, message: READING_MESSAGES.DATE_INVALID };
-    }
-    if (isDateInFuture(readingDate.trim())) {
-      return { isValid: false, message: READING_MESSAGES.DATE_FUTURE };
-    }
-  }
-
-  if (slot !== undefined) {
-    if (typeof slot !== "string" || !ALLOWED_SLOTS.includes(slot as ReadingSlot)) {
-      return { isValid: false, message: READING_MESSAGES.SLOT_INVALID };
-    }
-  }
-
   return { isValid: true };
 }
 

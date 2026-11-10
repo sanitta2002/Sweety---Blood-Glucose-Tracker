@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { AUTH_MESSAGES } from "../constants/messages.js";
 
 export interface ValidationResult {
@@ -5,59 +6,52 @@ export interface ValidationResult {
   message?: string;
 }
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const registerSchema = z.object({
+  name: z
+    .string({ message: AUTH_MESSAGES.NAME_REQUIRED })
+    .trim()
+    .min(1, { message: AUTH_MESSAGES.NAME_REQUIRED })
+    .min(2, { message: AUTH_MESSAGES.NAME_MIN_LENGTH }),
+  email: z
+    .string({ message: AUTH_MESSAGES.EMAIL_REQUIRED })
+    .trim()
+    .min(1, { message: AUTH_MESSAGES.EMAIL_REQUIRED })
+    .email({ message: AUTH_MESSAGES.EMAIL_INVALID }),
+  password: z
+    .string({ message: AUTH_MESSAGES.PASSWORD_REQUIRED })
+    .min(1, { message: AUTH_MESSAGES.PASSWORD_REQUIRED })
+    .min(6, { message: AUTH_MESSAGES.PASSWORD_MIN_LENGTH }),
+});
 
-export function validateRegisterInput(data: {
-  name?: unknown;
-  email?: unknown;
-  password?: unknown;
-}): ValidationResult {
-  const { name, email, password } = data;
+export const loginSchema = z.object({
+  email: z
+    .string({ message: AUTH_MESSAGES.EMAIL_REQUIRED })
+    .trim()
+    .min(1, { message: AUTH_MESSAGES.EMAIL_REQUIRED })
+    .email({ message: AUTH_MESSAGES.EMAIL_INVALID }),
+  password: z
+    .string({ message: AUTH_MESSAGES.PASSWORD_REQUIRED })
+    .min(1, { message: AUTH_MESSAGES.PASSWORD_REQUIRED }),
+});
 
-  if (typeof name !== "string" || name.trim().length === 0) {
-    return { isValid: false, message: AUTH_MESSAGES.NAME_REQUIRED };
+export function validateRegisterInput(data: unknown): ValidationResult {
+  const result = registerSchema.safeParse(data);
+  if (!result.success) {
+    return {
+      isValid: false,
+      message: result.error.issues[0]?.message || AUTH_MESSAGES.NAME_REQUIRED,
+    };
   }
-
-  if (name.trim().length < 2) {
-    return { isValid: false, message: AUTH_MESSAGES.NAME_MIN_LENGTH };
-  }
-
-  if (typeof email !== "string" || email.trim().length === 0) {
-    return { isValid: false, message: AUTH_MESSAGES.EMAIL_REQUIRED };
-  }
-
-  if (!EMAIL_REGEX.test(email.trim())) {
-    return { isValid: false, message: AUTH_MESSAGES.EMAIL_INVALID };
-  }
-
-  if (typeof password !== "string" || password.length === 0) {
-    return { isValid: false, message: AUTH_MESSAGES.PASSWORD_REQUIRED };
-  }
-
-  if (password.length < 6) {
-    return { isValid: false, message: AUTH_MESSAGES.PASSWORD_MIN_LENGTH };
-  }
-
   return { isValid: true };
 }
 
-export function validateLoginInput(data: {
-  email?: unknown;
-  password?: unknown;
-}): ValidationResult {
-  const { email, password } = data;
-
-  if (typeof email !== "string" || email.trim().length === 0) {
-    return { isValid: false, message: AUTH_MESSAGES.EMAIL_REQUIRED };
+export function validateLoginInput(data: unknown): ValidationResult {
+  const result = loginSchema.safeParse(data);
+  if (!result.success) {
+    return {
+      isValid: false,
+      message: result.error.issues[0]?.message || AUTH_MESSAGES.EMAIL_REQUIRED,
+    };
   }
-
-  if (!EMAIL_REGEX.test(email.trim())) {
-    return { isValid: false, message: AUTH_MESSAGES.EMAIL_INVALID };
-  }
-
-  if (typeof password !== "string" || password.length === 0) {
-    return { isValid: false, message: AUTH_MESSAGES.PASSWORD_REQUIRED };
-  }
-
   return { isValid: true };
 }
